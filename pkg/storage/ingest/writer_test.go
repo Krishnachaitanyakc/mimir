@@ -89,6 +89,7 @@ func TestWriter_WriteSync(t *testing.T) {
 		fetches := consumer.PollFetches(fetchCtx)
 		require.NoError(t, fetches.Err())
 		require.Len(t, fetches.Records(), 1)
+		assert.Equal(t, topicName, fetches.Records()[0].Topic)
 		assert.Equal(t, []byte(tenantID), fetches.Records()[0].Key)
 
 		received := mimirpb.WriteRequest{}
