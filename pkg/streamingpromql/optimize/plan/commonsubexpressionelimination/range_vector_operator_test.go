@@ -1081,7 +1081,6 @@ func TestRangeVectorOperator_Stats(t *testing.T) {
 		labels.MustNewMatcher(labels.MatchEqual, "env", "test"),
 	}
 
-	stats := types.NewQueryStats()
 	timeRange := types.NewInstantQueryTimeRange(timestamp.Time(0))
 	selector := selectors.NewRangeVectorSelector(
 		&selectors.Selector{
@@ -1093,7 +1092,6 @@ func TestRangeVectorOperator_Stats(t *testing.T) {
 			Subsets:                  []selectors.Subset{{Filter: subset}},
 		},
 		memoryConsumptionTracker,
-		stats,
 	)
 
 	buffer := NewRangeVectorDuplicationBuffer(selector, memoryConsumptionTracker, timeRange, log.NewNopLogger())
