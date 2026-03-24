@@ -28,10 +28,11 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type SumOverTimeIntermediate struct {
-	SumF     float64            `protobuf:"fixed64,1,opt,name=sumF,proto3" json:"sumF,omitempty"`
-	HasFloat bool               `protobuf:"varint,2,opt,name=hasFloat,proto3" json:"hasFloat,omitempty"`
-	SumC     float64            `protobuf:"fixed64,3,opt,name=sumC,proto3" json:"sumC,omitempty"`
-	SumH     *mimirpb.Histogram `protobuf:"bytes,4,opt,name=sumH,proto3" json:"sumH,omitempty"`
+	SumF             float64            `protobuf:"fixed64,1,opt,name=sumF,proto3" json:"sumF,omitempty"`
+	HasFloat         bool               `protobuf:"varint,2,opt,name=hasFloat,proto3" json:"hasFloat,omitempty"`
+	SumC             float64            `protobuf:"fixed64,3,opt,name=sumC,proto3" json:"sumC,omitempty"`
+	SumH             *mimirpb.Histogram `protobuf:"bytes,4,opt,name=sumH,proto3" json:"sumH,omitempty"`
+	ForceEmptyResult bool               `protobuf:"varint,5,opt,name=forceEmptyResult,proto3" json:"forceEmptyResult,omitempty"`
 }
 
 func (m *SumOverTimeIntermediate) Reset()      { *m = SumOverTimeIntermediate{} }
@@ -592,6 +593,9 @@ func (this *SumOverTimeIntermediate) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.SumH.Equal(that1.SumH) {
+		return false
+	}
+	if this.ForceEmptyResult != that1.ForceEmptyResult {
 		return false
 	}
 	return true
@@ -1181,6 +1185,16 @@ func (m *SumOverTimeIntermediate) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	_ = i
 	var l int
 	_ = l
+	if m.ForceEmptyResult {
+		i--
+		if m.ForceEmptyResult {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x28
+	}
 	if m.SumH != nil {
 		{
 			size, err := m.SumH.MarshalToSizedBuffer(dAtA[:i])
@@ -1819,6 +1833,9 @@ func (m *SumOverTimeIntermediate) Size() (n int) {
 		l = m.SumH.Size()
 		n += 1 + l + sovFunctions(uint64(l))
 	}
+	if m.ForceEmptyResult {
+		n += 2
+	}
 	return n
 }
 
@@ -2060,6 +2077,7 @@ func (this *SumOverTimeIntermediate) String() string {
 		`HasFloat:` + fmt.Sprintf("%v", this.HasFloat) + `,`,
 		`SumC:` + fmt.Sprintf("%v", this.SumC) + `,`,
 		`SumH:` + strings.Replace(fmt.Sprintf("%v", this.SumH), "Histogram", "mimirpb.Histogram", 1) + `,`,
+		`ForceEmptyResult:` + fmt.Sprintf("%v", this.ForceEmptyResult) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2341,6 +2359,26 @@ func (m *SumOverTimeIntermediate) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ForceEmptyResult", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowFunctions
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ForceEmptyResult = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipFunctions(dAtA[iNdEx:])

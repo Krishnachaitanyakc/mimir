@@ -78,7 +78,12 @@ func sumOverTimeGenerate(
 	if haveHistograms {
 		h, err := functions.SumHistograms(hHead, hTail, emitAnnotation)
 		if err != nil {
-			return SumOverTimeIntermediate{}, err
+			if errors.Is(err, histogram.ErrHistogramsIncompatibleSchema) {
+				emitAnnotation(annotations.NewMixedExponentialCustomHistogramsWarning)
+				return SumOverTimeIntermediate{ForceEmptyResult: true}, nil
+			} else {
+				return SumOverTimeIntermediate{}, err
+			}
 		}
 		histProto := mimirpb.FromFloatHistogramToHistogramProto(0, h)
 		result.SumH = &histProto
@@ -100,6 +105,9 @@ func sumOverTimeCombine(
 	nhcbBoundsReconciledSeen := false
 
 	for _, p := range pieces {
+		if p.ForceEmptyResult {
+			return 0, false, nil, nil
+		}
 		if p.HasFloat {
 			haveFloats = true
 			sumF, c = floats.KahanSumInc(p.SumF, sumF, c)
