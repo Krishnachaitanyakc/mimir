@@ -5610,6 +5610,10 @@ bucket_store:
       # CLI flag: -blocks-storage.bucket-store.index-cache.inmemory.max-size-bytes
       [max_size_bytes: <int> | default = 1073741824]
 
+    # (experimental) Cache resolved postings offsets for label matchers
+    # CLI flag: -blocks-storage.bucket-store.index-cache.cache-postings-offsets
+    [cache_postings_offsets: <boolean> | default = false]
+
   chunks_cache:
     # Backend for chunks cache, if not empty. Supported values: memcached.
     # CLI flag: -blocks-storage.bucket-store.chunks-cache.backend
