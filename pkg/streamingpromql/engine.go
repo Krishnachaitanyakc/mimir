@@ -46,6 +46,17 @@ var errPerStepStatsNotSupported = errors.New("per-step stats are not supported b
 
 const DefaultLookbackDelta = 5 * time.Minute // This should be the same value as github.com/prometheus/prometheus/promql.defaultLookbackDelta.
 
+type cacheDisabledCtxKey struct{}
+
+func ContextWithCacheDisabled(ctx context.Context, disabled bool) context.Context {
+	return context.WithValue(ctx, cacheDisabledCtxKey{}, disabled)
+}
+
+func CacheDisabledFromContext(ctx context.Context) bool {
+	v, _ := ctx.Value(cacheDisabledCtxKey{}).(bool)
+	return v
+}
+
 func NewEngine(opts EngineOpts, metrics *stats.QueryMetrics, planner *QueryPlanner) (*Engine, error) {
 	var cacheFactory *cache.CacheFactory
 	if opts.RangeVectorSplitting.Enabled {
@@ -304,6 +315,7 @@ func (e *Engine) materializeAndCreateEvaluator(ctx context.Context, queryable st
 		EagerLoadSelectors: e.eagerLoadSelectors,
 		QueryParameters:    params,
 		Logger:             e.logger,
+		CacheDisabled:      CacheDisabledFromContext(ctx),
 	}
 
 	// When we are executing from within a time split query the memory consumption tracker will be allocated for the entire query
