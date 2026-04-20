@@ -3,20 +3,19 @@
 package scheduler
 
 import (
+	"container/list"
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/benbjohnson/clock"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/mimir/pkg/compactor/scheduler/compactorschedulerpb"
 )
-
-const outsideRotation int = -1
 
 type rotationTransition int
 
@@ -44,17 +43,21 @@ type Rotator struct {
 	intervalsBeforeLeaseExpiration   int
 	intervalsBeforeColdStartPlanning int
 	clock                            clock.Clock
-	rotationIndexCounter             *atomic.Int32 // only increments, overflow is okay
 	logger                           log.Logger
 
 	mtx            sync.RWMutex
 	tenantStateMap map[string]*TenantRotationState
-	rotation       []string
+	rotation       *list.List
+	// cursor points to the next rotation element to be leased. It is advanced via CAS by concurrent
+	// readers of LeaseJob so each rotation cycle visits every tenant exactly once.
+	// Invariant: cursor is nil if and only if rotation is empty.
+	cursor atomic.Pointer[list.Element]
 }
 
 type TenantRotationState struct {
-	tracker       *JobTracker
-	rotationIndex int
+	tracker *JobTracker
+	// element is the tenant's slot in the rotation, or nil when the tenant is outside the rotation.
+	element *list.Element
 }
 
 func NewRotator(leaseDuration, planningInterval, compactionWaitPeriod, maintenanceInterval time.Duration, intervalsBeforeLeaseExpiration, intervalsBeforeColdStartPlanning int, logger log.Logger) *Rotator {
@@ -66,10 +69,9 @@ func NewRotator(leaseDuration, planningInterval, compactionWaitPeriod, maintenan
 		intervalsBeforeLeaseExpiration:   intervalsBeforeLeaseExpiration,
 		intervalsBeforeColdStartPlanning: intervalsBeforeColdStartPlanning,
 		clock:                            clock.New(),
-		rotationIndexCounter:             atomic.NewInt32(0),
 		mtx:                              sync.RWMutex{},
 		tenantStateMap:                   make(map[string]*TenantRotationState),
-		rotation:                         make([]string, 0, 10), // initial size doesn't really matter
+		rotation:                         list.New(),
 		logger:                           logger,
 	}
 
@@ -111,7 +113,8 @@ func (r *Rotator) PrepareForShutdown() {
 	defer r.mtx.Unlock()
 
 	r.tenantStateMap = make(map[string]*TenantRotationState)
-	r.rotation = []string{}
+	r.rotation = list.New()
+	r.cursor.Store(nil)
 }
 
 func (r *Rotator) RecoverFrom(jobTrackers map[string]*JobTracker, creationTime time.Time) {
@@ -136,8 +139,7 @@ func (r *Rotator) RecoverFrom(jobTrackers map[string]*JobTracker, creationTime t
 	// Place recovered tenants that have pending work in the rotation
 	for tenant, jobTracker := range jobTrackers {
 		rotationState := &TenantRotationState{
-			tracker:       jobTracker,
-			rotationIndex: outsideRotation,
+			tracker: jobTracker,
 		}
 		r.tenantStateMap[tenant] = rotationState
 		if !jobTracker.isPendingEmpty() {
@@ -149,20 +151,16 @@ func (r *Rotator) RecoverFrom(jobTrackers map[string]*JobTracker, creationTime t
 func (r *Rotator) LeaseJob(ctx context.Context) (*compactorschedulerpb.LeaseJobResponse, bool, error) {
 	r.mtx.RLock()
 
-	length := len(r.rotation)
+	length := r.rotation.Len()
 	if length == 0 {
-		// avoid divide by zero
 		r.mtx.RUnlock()
 		return nil, false, nil
 	}
 
-	// Handle potential overflow of rotationIndexCounter
-	i := ((int(r.rotationIndexCounter.Add(1)) % length) + length) % length
-
-	// Check possibly all tenants. Tenants get removed from the rotation once they are out of work,
-	// but this may still encounter some due to holding the read lock
+	// Check possibly all tenants. A tenant may transition to having no pending jobs on the Lease call
+	// itself, which returns a nil response and we'll try the next.
 	for range length {
-		tenant := r.rotation[i]
+		tenant := r.advanceCursor().Value.(string)
 		response, transition, err := r.tenantStateMap[tenant].tracker.Lease()
 		if err != nil {
 			r.mtx.RUnlock()
@@ -175,16 +173,26 @@ func (r *Rotator) LeaseJob(ctx context.Context) (*compactorschedulerpb.LeaseJobR
 				r.possiblyRemoveFromRotation(tenant)
 			}
 			return response, true, nil
-
-		}
-		i += 1
-		if i == length {
-			i = 0
 		}
 	}
 
 	r.mtx.RUnlock()
 	return nil, false, nil
+}
+
+// advanceCursor atomically swaps the cursor to the next rotation element and returns the element
+// that was at the cursor before the swap. Must be called under the read lock with a non-empty rotation.
+func (r *Rotator) advanceCursor() *list.Element {
+	for {
+		elem := r.cursor.Load()
+		next := elem.Next()
+		if next == nil {
+			next = r.rotation.Front()
+		}
+		if r.cursor.CompareAndSwap(elem, next) {
+			return elem
+		}
+	}
 }
 
 func (r *Rotator) RenewJobLease(tenant string, key string, epoch int64) bool {
@@ -228,7 +236,7 @@ func (r *Rotator) CancelJobLease(tenant string, key string, epoch int64) (bool, 
 		return canceled, nil
 	}
 
-	if tenantState.rotationIndex == outsideRotation && !tenantState.tracker.isPendingEmpty() {
+	if tenantState.element == nil && !tenantState.tracker.isPendingEmpty() {
 		r.addToRotation(tenant, tenantState)
 	}
 
@@ -249,21 +257,21 @@ func (r *Rotator) OfferCompactionJobs(tenant string, jobs []*TrackedCompactionJo
 		return 0, found, err
 	}
 
-	// Must still be holding the read lock to read rotation index
+	// Must still be holding the read lock to read rotation membership
 	switch transition {
 	case rotationAddTracker:
-		if tenantState.rotationIndex == outsideRotation {
+		if tenantState.element == nil {
 			r.mtx.RUnlock() // drop read lock to acquire write lock
 			r.mtx.Lock()
 			// Double check still present, not in rotation, and there are pending jobs
-			if tenantState, ok := r.tenantStateMap[tenant]; ok && tenantState.rotationIndex == outsideRotation && !tenantState.tracker.isPendingEmpty() {
+			if tenantState, ok := r.tenantStateMap[tenant]; ok && tenantState.element == nil && !tenantState.tracker.isPendingEmpty() {
 				r.addToRotation(tenant, tenantState)
 			}
 			r.mtx.Unlock()
 			return added, found, nil
 		}
 	case rotationRemoveTracker:
-		if tenantState.rotationIndex != outsideRotation {
+		if tenantState.element != nil {
 			r.mtx.RUnlock() // drop read lock to acquire write lock
 			r.possiblyRemoveFromRotation(tenant)
 			return added, found, nil
@@ -306,8 +314,7 @@ func (r *Rotator) AddTenant(tenant string, jobTracker *JobTracker) {
 	}
 
 	rotationState := &TenantRotationState{
-		tracker:       jobTracker,
-		rotationIndex: outsideRotation,
+		tracker: jobTracker,
 	}
 
 	r.tenantStateMap[tenant] = rotationState
@@ -328,7 +335,7 @@ func (r *Rotator) RemoveTenant(tenant string) (*JobTracker, bool) {
 	// Note: don't care if there are active/pending jobs in this tenant.
 	// A caller would only call this function if it sees the tenant as entirely empty. We could still be
 	// generating plan jobs that achieve nothing in that case.
-	if tenantState.rotationIndex != outsideRotation {
+	if tenantState.element != nil {
 		r.removeFromRotation(tenantState)
 	}
 	delete(r.tenantStateMap, tenant)
@@ -361,7 +368,7 @@ func (r *Rotator) Maintenance(ctx context.Context, enforceLeaseExpiration, plan 
 	defer r.mtx.Unlock()
 	for _, tenant := range addRotationFor {
 		tenantState, ok := r.tenantStateMap[tenant]
-		if ok && tenantState.rotationIndex == outsideRotation && !tenantState.tracker.isPendingEmpty() {
+		if ok && tenantState.element == nil && !tenantState.tracker.isPendingEmpty() {
 			r.addToRotation(tenant, tenantState)
 		}
 	}
@@ -375,26 +382,33 @@ func (r *Rotator) possiblyRemoveFromRotation(tenant string) {
 	// Since we hold the write lock, we have exclusive access to all trackers.
 	// Therefore, the tracker lock isn't necessary for isPendingEmpty(). Be quick.
 	tenantState, ok := r.tenantStateMap[tenant]
-	if ok && tenantState.rotationIndex != outsideRotation && tenantState.tracker.isPendingEmpty() {
+	if ok && tenantState.element != nil && tenantState.tracker.isPendingEmpty() {
 		r.removeFromRotation(tenantState)
 	}
 }
 
-// Adds the specified tenant to the rotation. A write lock must be held in order to call this function.
+// addToRotation appends the specified tenant to the rotation. A write lock must be held.
 func (r *Rotator) addToRotation(tenant string, tenantState *TenantRotationState) {
-	tenantState.rotationIndex = len(r.rotation)
-	r.rotation = append(r.rotation, tenant)
+	tenantState.element = r.rotation.PushBack(tenant)
+	if r.cursor.Load() == nil {
+		r.cursor.Store(tenantState.element)
+	}
 }
 
-// Removes the specified tenant from the rotation. A write lock must be held in order to call this function.
+// removeFromRotation removes the specified tenant from the rotation in O(1) while preserving the
+// order of the remaining tenants. A write lock must be held.
 func (r *Rotator) removeFromRotation(tenantState *TenantRotationState) {
-	length := len(r.rotation)
-	if tenantState.rotationIndex != length-1 {
-		// Swap with the last tenant. This causes an imperfect rotation, but such is life
-		r.rotation[tenantState.rotationIndex] = r.rotation[length-1]
-		r.tenantStateMap[r.rotation[length-1]].rotationIndex = tenantState.rotationIndex
+	elem := tenantState.element
+	if r.cursor.Load() == elem {
+		next := elem.Next()
+		if next == nil {
+			next = r.rotation.Front() // wrap
+		}
+		if next == elem {
+			next = nil // removing the last remaining element
+		}
+		r.cursor.Store(next)
 	}
-	// Remove the tenant from the rotation
-	r.rotation = r.rotation[:length-1]
-	tenantState.rotationIndex = outsideRotation
+	r.rotation.Remove(elem)
+	tenantState.element = nil
 }
