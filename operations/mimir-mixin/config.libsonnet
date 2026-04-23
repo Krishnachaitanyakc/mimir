@@ -246,6 +246,14 @@
     // Whether alerts for experimental ingest storage are enabled.
     ingest_storage_enabled: true,
 
+    // Whether to assume ingesters are running with
+    // -ingest-storage.ingester-partition-metric-label-enabled=true and use the
+    // native ingester_partition label in queries instead of deriving it via
+    // label_replace on the pod name.
+    // Planned to become the default in Mimir 3.3 and to be removed in Mimir 3.5,
+    // once the server-side flag ships enabled by default in 3.2.
+    ingest_storage_ingester_partition_metric_label_enabled: false,
+
     // Whether the experimental usage tracker is enabled.
     usage_tracker_enabled: false,
 

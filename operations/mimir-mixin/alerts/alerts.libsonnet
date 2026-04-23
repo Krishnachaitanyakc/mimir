@@ -332,33 +332,52 @@ local utils = import 'mixin-utils/utils.libsonnet';
           // Alert if an ingester instance has no tenants assigned while other instances in the same cell do.
           alert: $.alertName('IngesterInstanceHasNoTenants'),
           'for': '1h',
-          expr: |||
-            (
-              (min by(%(alert_aggregation_labels)s, %(per_instance_label)s) (cortex_ingester_memory_users) == 0)
-              unless
-              (max by(%(alert_aggregation_labels)s, %(per_instance_label)s) (cortex_lifecycler_read_only) > 0)
-            )
-            and on (%(alert_aggregation_labels)s)
-            # Only if there are more timeseries than would be expected due to continuous testing load
-            (
-              ( # Classic storage timeseries
-                sum by(%(alert_aggregation_labels)s) (cortex_ingester_memory_series)
-                /
-                max by(%(alert_aggregation_labels)s) (cortex_distributor_replication_factor)
-              )
-              or
-              ( # Ingest storage timeseries
-                sum by(%(alert_aggregation_labels)s) (
-                  max by(ingester_id, %(alert_aggregation_labels)s) (
-                    label_replace(cortex_ingester_memory_series,
-                      "ingester_id", "$1",
-                      "%(per_instance_label)s", ".*-([0-9]+)$"
+          expr:
+            local ingestStorageTimeseries =
+              if $._config.ingest_storage_ingester_partition_metric_label_enabled then
+                |||
+                  ( # Ingest storage timeseries
+                    sum by(%(alert_aggregation_labels)s) (
+                      max by(ingester_partition, %(alert_aggregation_labels)s) (
+                        cortex_ingester_memory_series
+                      )
                     )
                   )
-                )
-              )
-            ) > 100000
-          ||| % $._config,
+                |||
+              else
+                |||
+                  ( # Ingest storage timeseries
+                    sum by(%(alert_aggregation_labels)s) (
+                      max by(ingester_id, %(alert_aggregation_labels)s) (
+                        label_replace(cortex_ingester_memory_series,
+                          "ingester_id", "$1",
+                          "%(per_instance_label)s", ".*-([0-9]+)$"
+                        )
+                      )
+                    )
+                  )
+                |||;
+            // Re-indent every line of the ingest-storage arm by two spaces so it lines up with
+            // the surrounding expression once interpolated.
+            local indentedArm = '  ' + std.strReplace(std.rstripChars(ingestStorageTimeseries, '\n'), '\n', '\n  ');
+            (|||
+               (
+                 (min by(%(alert_aggregation_labels)s, %(per_instance_label)s) (cortex_ingester_memory_users) == 0)
+                 unless
+                 (max by(%(alert_aggregation_labels)s, %(per_instance_label)s) (cortex_lifecycler_read_only) > 0)
+               )
+               and on (%(alert_aggregation_labels)s)
+               # Only if there are more timeseries than would be expected due to continuous testing load
+               (
+                 ( # Classic storage timeseries
+                   sum by(%(alert_aggregation_labels)s) (cortex_ingester_memory_series)
+                   /
+                   max by(%(alert_aggregation_labels)s) (cortex_distributor_replication_factor)
+                 )
+                 or
+             ||| + indentedArm + '\n' + |||
+               ) > 100000
+             |||) % $._config,
           labels: {
             severity: 'warning',
           },

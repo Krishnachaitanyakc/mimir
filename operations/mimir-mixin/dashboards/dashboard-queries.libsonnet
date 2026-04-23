@@ -343,34 +343,49 @@ local utils = import 'mixin-utils/utils.libsonnet';
       readRequestsPerSecondSelector: '%(ingesterMatcher)s,route=~"%(readGRPCIngesterRoute)s"' % variables,
       writeRequestsPerSecondSelector: '%(ingesterMatcher)s, route="%(writeGRPCIngesterRoute)s"' % variables,
 
-      ingestOrClassicDeduplicatedQuery(perIngesterQuery, groupByLabels=''):: |||
-        ( # Classic storage
-          sum by (%(groupByCluster)s, %(groupByLabels)s) (
-            %(perIngesterQuery)s unless on (job)
-            cortex_partition_ring_partitions{%(ingester)s}
-          )
-          / on (%(groupByCluster)s) group_left()
-          max by (%(groupByCluster)s) (cortex_distributor_replication_factor{%(distributor)s})
-        )
-        or
-        ( # Ingest storage
-          sum by (%(groupByCluster)s, %(groupByLabels)s) (
-            max by (ingester_id, %(groupByCluster)s, %(groupByLabels)s) (
-              label_replace(
-                %(perIngesterQuery)s,
-                "ingester_id", "$1", "%(instance)s", ".*-([0-9]+)$"
+      ingestOrClassicDeduplicatedQuery(perIngesterQuery, groupByLabels='')::
+        local ingestStorageArm =
+          if $._config.ingest_storage_ingester_partition_metric_label_enabled then
+            |||
+              ( # Ingest storage
+                sum by (%(groupByCluster)s, %(groupByLabels)s) (
+                  max by (ingester_partition, %(groupByCluster)s, %(groupByLabels)s) (
+                    %(perIngesterQuery)s
+                  )
+                )
               )
-            )
-          )
-        )
-      ||| % {
-        perIngesterQuery: perIngesterQuery,
-        instance: variables.instance,
-        groupByLabels: groupByLabels,
-        groupByCluster: $._config.group_by_cluster,
-        distributor: variables.distributorMatcher,
-        ingester: variables.ingesterMatcher,
-      },
+            |||
+          else
+            |||
+              ( # Ingest storage
+                sum by (%(groupByCluster)s, %(groupByLabels)s) (
+                  max by (ingester_id, %(groupByCluster)s, %(groupByLabels)s) (
+                    label_replace(
+                      %(perIngesterQuery)s,
+                      "ingester_id", "$1", "%(instance)s", ".*-([0-9]+)$"
+                    )
+                  )
+                )
+              )
+            |||;
+        (|||
+           ( # Classic storage
+             sum by (%(groupByCluster)s, %(groupByLabels)s) (
+               %(perIngesterQuery)s unless on (job)
+               cortex_partition_ring_partitions{%(ingester)s}
+             )
+             / on (%(groupByCluster)s) group_left()
+             max by (%(groupByCluster)s) (cortex_distributor_replication_factor{%(distributor)s})
+           )
+           or
+         ||| + std.rstripChars(ingestStorageArm, '\n') + '\n') % {
+          perIngesterQuery: perIngesterQuery,
+          instance: variables.instance,
+          groupByLabels: groupByLabels,
+          groupByCluster: $._config.group_by_cluster,
+          distributor: variables.distributorMatcher,
+          ingester: variables.ingesterMatcher,
+        },
     },
 
     store_gateway: {
