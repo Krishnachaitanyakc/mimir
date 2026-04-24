@@ -254,7 +254,7 @@ func initCachingBuckets(
 
 	// Init index-header caching bucket with the memcached client from index cache, if enabled.
 	indexHeaderBkt, err = tsdb.NewIndexHeaderCachingBucket(
-		metadataCache, cachingBucketConfig, indexCacheClient, cfg.BucketStore.IndexHeaderCache, bucketClient, logger, reg, cachingBucketMetrics,
+		metadataCache, cachingBucketConfig.Clone(), indexCacheClient, cfg.BucketStore.IndexHeaderCache, bucketClient, logger, reg, cachingBucketMetrics,
 	)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "create index header caching bucket")
@@ -265,7 +265,7 @@ func initCachingBuckets(
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "chunks-cache")
 	}
-	chunksBkt, err = tsdb.NewChunksCachingBucket(metadataCache, cachingBucketConfig, chunksCacheClient, cfg.BucketStore.ChunksCache, bucketClient, logger, reg, cachingBucketMetrics)
+	chunksBkt, err = tsdb.NewChunksCachingBucket(metadataCache, cachingBucketConfig.Clone(), chunksCacheClient, cfg.BucketStore.ChunksCache, bucketClient, logger, reg, cachingBucketMetrics)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "create chunks caching bucket")
 	}

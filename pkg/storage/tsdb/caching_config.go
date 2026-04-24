@@ -145,7 +145,7 @@ func NewMetadataCachingBucket(metadataConfig MetadataCacheConfig, bkt objstore.B
 	if err != nil {
 		return nil, err
 	}
-	if metadataCache != nil {
+	if metadataCache == nil {
 		// No caching configured
 		return bkt, nil
 	}
@@ -181,11 +181,11 @@ func NewIndexHeaderCachingBucket(
 			attributesCache = metadataCache
 		}
 
-		// If in-memory cache is enabled, wrap the attributes cache with the in-memory LRU cache.
+		// If in-memory cache is enabled, wrap the subrange cache with the in-memory LRU cache.
 		if indexHeaderCacheConfig.SubRangeInMemoryMaxItems > 0 {
 			indexCacheClient, err = cache.WrapWithLRUCache(
 				indexCacheClient,
-				"index-header-attributes-cache",
+				"index-header-subranges-cache",
 				prometheus.WrapRegistererWithPrefix("cortex_", reg),
 				indexHeaderCacheConfig.SubRangeInMemoryMaxItems,
 				indexHeaderCacheConfig.SubrangeTTL,

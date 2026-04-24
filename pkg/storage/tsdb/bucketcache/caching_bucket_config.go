@@ -39,6 +39,38 @@ func NewCachingBucketConfig() *CachingBucketConfig {
 	}
 }
 
+// Clone returns a deep copy of CachingBucketConfig maps and entries.
+func (cfg *CachingBucketConfig) Clone() *CachingBucketConfig {
+	if cfg == nil {
+		return nil
+	}
+
+	out := NewCachingBucketConfig()
+
+	for name, entry := range cfg.get {
+		entryCopy := *entry
+		out.get[name] = &entryCopy
+	}
+	for name, entry := range cfg.iter {
+		entryCopy := *entry
+		out.iter[name] = &entryCopy
+	}
+	for name, entry := range cfg.exists {
+		entryCopy := *entry
+		out.exists[name] = &entryCopy
+	}
+	for name, entry := range cfg.getRange {
+		entryCopy := *entry
+		out.getRange[name] = &entryCopy
+	}
+	for name, entry := range cfg.attributes {
+		entryCopy := *entry
+		out.attributes[name] = &entryCopy
+	}
+
+	return out
+}
+
 // Generic config for single operation.
 type operationConfig struct {
 	matcher func(name string) bool
