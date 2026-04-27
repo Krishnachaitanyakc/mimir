@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/alertmanager/notify"
+	"github.com/prometheus/alertmanager/silence"
 	"github.com/prometheus/alertmanager/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -1172,17 +1173,17 @@ func newSilenceMetrics(r prometheus.Registerer) *silenceMetrics {
 	m.silencesActive = promauto.With(r).NewGauge(prometheus.GaugeOpts{
 		Name:        "alertmanager_silences",
 		Help:        "How many silences by state.",
-		ConstLabels: prometheus.Labels{"state": "active"},
+		ConstLabels: prometheus.Labels{"state": string(silence.SilenceStateActive)},
 	})
 	m.silencesPending = promauto.With(r).NewGauge(prometheus.GaugeOpts{
 		Name:        "alertmanager_silences",
 		Help:        "How many silences by state.",
-		ConstLabels: prometheus.Labels{"state": "pending"},
+		ConstLabels: prometheus.Labels{"state": string(silence.SilenceStatePending)},
 	})
 	m.silencesExpired = promauto.With(r).NewGauge(prometheus.GaugeOpts{
 		Name:        "alertmanager_silences",
 		Help:        "How many silences by state.",
-		ConstLabels: prometheus.Labels{"state": "expired"},
+		ConstLabels: prometheus.Labels{"state": string(silence.SilenceStateExpired)},
 	})
 
 	return m
