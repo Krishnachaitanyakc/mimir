@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/user"
+	"github.com/grafana/mimir/pkg/streamingpromql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/promql"
 	"github.com/prometheus/prometheus/promql/promqltest"
@@ -102,6 +103,22 @@ func TestQuerySplitting_RangeVectorSplittingTestCases(t *testing.T) {
 	testFiles, err := fs.Glob(packageFS, "*.test")
 	require.NoError(t, err)
 	require.NotEmpty(t, testFiles, "expected to find .test files in package directory")
+
+	t.Run("no_splitting", func(t *testing.T) {
+		t.Parallel()
+		opts := streamingpromql.NewTestEngineOpts()
+		planner, err := streamingpromql.NewQueryPlanner(opts, streamingpromql.NewMaximumSupportedVersionQueryPlanVersionProvider())
+		require.NoError(t, err)
+
+		engine, err := streamingpromql.NewEngine(opts, stats.NewQueryMetrics(nil), planner)
+		require.NoError(t, err)
+
+		for _, testFile := range testFiles {
+			t.Run(testFile, func(t *testing.T) {
+				runTestFile(t, packageFS, testFile, engine, func() {})
+			})
+		}
+	})
 
 	for _, splitInterval := range querySplittingTestSplitIntervals {
 		t.Run(fmt.Sprintf("split_interval_%v", splitInterval), func(t *testing.T) {
