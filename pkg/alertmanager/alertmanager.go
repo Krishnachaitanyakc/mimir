@@ -23,6 +23,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/alertmanager/alert"
 	"github.com/prometheus/alertmanager/api"
 	"github.com/prometheus/alertmanager/cluster"
 	"github.com/prometheus/alertmanager/cluster/clusterpb"
@@ -274,7 +275,7 @@ func New(cfg *Config, reg *prometheus.Registry) (*Alertmanager, error) {
 			Help:    "Histogram of request durations for the Alertmanager API.",
 			Buckets: prometheus.DefBuckets,
 		}, []string{"handler"}),
-		GroupFunc: func(ctx context.Context, f1 func(*dispatch.Route) bool, f2 func(*types.Alert, time.Time) bool) (dispatch.AlertGroups, map[model.Fingerprint][]string, error) {
+		GroupFunc: func(ctx context.Context, f1 func(*dispatch.Route) bool, f2 func(*alert.Alert, time.Time) bool) (dispatch.AlertGroups, map[model.Fingerprint][]string, error) {
 			return am.dispatcher.Groups(ctx, f1, f2)
 		},
 	})
@@ -383,6 +384,11 @@ func (am *Alertmanager) ApplyConfig(conf *config.Config, tmpls []*alertspb.Templ
 	)
 
 	go am.dispatcher.Run(time.Now())
+	// Wait for the dispatcher to finish initial loading before returning so that a
+	// subsequent Stop() observes a fully-initialized dispatcher state. Without this
+	// barrier, Stop's WaitGroup.Wait can return before Run has registered with the
+	// WaitGroup, racing with Run's continued initialization.
+	am.dispatcher.WaitForLoading()
 	go am.inhibitor.Run()
 
 	am.configHashMetric.Set(md5HashAsMetricValue([]byte(rawCfg)))
@@ -677,7 +683,7 @@ func newAlertsLimiter(tenant string, limits Limits, reg prometheus.Registerer) *
 	return limiter
 }
 
-func (a *alertsLimiter) PreStore(alert *types.Alert, existing bool) error {
+func (a *alertsLimiter) PreStore(alert *alert.Alert, existing bool) error {
 	if alert == nil {
 		return nil
 	}
@@ -709,7 +715,7 @@ func (a *alertsLimiter) PreStore(alert *types.Alert, existing bool) error {
 	return nil
 }
 
-func (a *alertsLimiter) PostStore(alert *types.Alert, existing bool) {
+func (a *alertsLimiter) PostStore(alert *alert.Alert, existing bool) {
 	if alert == nil {
 		return
 	}
@@ -729,7 +735,7 @@ func (a *alertsLimiter) PostStore(alert *types.Alert, existing bool) {
 	a.totalSize += newSize
 }
 
-func (a *alertsLimiter) PostDelete(alert *types.Alert) {
+func (a *alertsLimiter) PostDelete(alert *alert.Alert) {
 	if alert == nil {
 		return
 	}

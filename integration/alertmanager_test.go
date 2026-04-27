@@ -188,7 +188,7 @@ func TestAlertmanagerClassicMode(t *testing.T) {
 		StartsAt: time.Now(),
 		EndsAt:   time.Now().Add(time.Minute),
 	})
-	require.EqualError(t, err, "creating the silence failed with status 400 and error \"invalid silence: invalid label matcher 0: invalid label name \\\"bar🙂\\\"\"\n")
+	require.EqualError(t, err, "creating the silence failed with status 400 and error \"invalid silence: invalid label matcher 0 in set 0: invalid label name \\\"bar🙂\\\"\"\n")
 	require.Empty(t, silenceID)
 
 	// Should be able to post alerts with classic labels but not UTF-8 labels.
@@ -760,29 +760,17 @@ func TestAlertmanagerSharding(t *testing.T) {
 				[]string{"cortex_alertmanager_alerts_received_total"},
 				e2e.SkipMissingMetrics))
 
-			// Endpoint: Non-API endpoints such as the web user interface
+			// Endpoint: Non-API endpoints.
+			// The /script.js, /favicon.ico, /-/healthy, /-/ready, /-/reload endpoints
+			// were served by alertmanager's UI package in v0.31.x. As of v0.32.0 the
+			// upstream UI package can no longer be used as a Go library, so Mimir no
+			// longer registers it; those paths now return 404.
 			{
 				for _, c := range clients {
-					// Static paths - just check route, not content.
-					_, err := c.GetAlertmanager(context.Background(), "/script.js")
-					assert.NoError(t, err)
-					_, err = c.GetAlertmanager(context.Background(), "/favicon.ico")
-					assert.NoError(t, err)
-
-					// Status paths - fixed response.
-					body, err := c.GetAlertmanager(context.Background(), "/-/healthy")
-					assert.NoError(t, err)
-					assert.Equal(t, "OK", body)
-					body, err = c.GetAlertmanager(context.Background(), "/-/ready")
-					assert.NoError(t, err)
-					assert.Equal(t, "OK", body)
-
 					// Disabled paths - should 404.
-					_, err = c.GetAlertmanager(context.Background(), "/metrics")
+					_, err := c.GetAlertmanager(context.Background(), "/metrics")
 					assert.EqualError(t, err, e2emimir.ErrNotFound.Error())
 					_, err = c.GetAlertmanager(context.Background(), "/debug/pprof")
-					assert.EqualError(t, err, e2emimir.ErrNotFound.Error())
-					err = c.PostAlertmanager(context.Background(), "/-/reload")
 					assert.EqualError(t, err, e2emimir.ErrNotFound.Error())
 				}
 			}
