@@ -331,6 +331,24 @@ func TestAlertsLimiterWithSizeLimitAndAnnotationUpdate(t *testing.T) {
 	})
 }
 
+func TestAlertsLimiterPostGC(t *testing.T) {
+	limiter := newAlertsLimiter("test", &mockAlertManagerLimits{}, prometheus.NewPedanticRegistry())
+
+	alertOne := &alert.Alert{Alert: alert1}
+	require.NoError(t, limiter.PreStore(alertOne, false))
+	limiter.PostStore(alertOne, false)
+
+	alertTwo := &alert.Alert{Alert: alert2}
+	require.NoError(t, limiter.PreStore(alertTwo, false))
+	limiter.PostStore(alertTwo, false)
+
+	limiter.PostGC(model.Fingerprints{alertOne.Fingerprint(), alertTwo.Fingerprint()})
+
+	count, totalSize := limiter.currentStats()
+	assert.Equal(t, 0, count)
+	assert.Equal(t, 0, totalSize)
+}
+
 // testLimiter sends sequence of alerts to limiter, and checks if limiter updated reacted correctly.
 func testLimiter(t *testing.T, limits Limits, ops []callbackOp) {
 	reg := prometheus.NewPedanticRegistry()

@@ -740,17 +740,31 @@ func (a *alertsLimiter) PostDelete(alert *alert.Alert) {
 		return
 	}
 
-	fp := alert.Fingerprint()
-
 	a.mx.Lock()
 	defer a.mx.Unlock()
 
-	a.totalSize -= a.sizes[fp]
+	a.delete(alert.Fingerprint())
+}
+
+func (a *alertsLimiter) PostGC(fingerprints model.Fingerprints) {
+	a.mx.Lock()
+	defer a.mx.Unlock()
+
+	for _, fp := range fingerprints {
+		a.delete(fp)
+	}
+}
+
+func (a *alertsLimiter) delete(fp model.Fingerprint) {
+	size, ok := a.sizes[fp]
+	if !ok {
+		return
+	}
+
+	a.totalSize -= size
 	delete(a.sizes, fp)
 	a.count--
 }
-
-func (a *alertsLimiter) PostGC(_ model.Fingerprints) {}
 
 func (a *alertsLimiter) currentStats() (count, totalSize int) {
 	a.mx.Lock()
