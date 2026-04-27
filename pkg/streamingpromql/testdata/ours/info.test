@@ -230,9 +230,9 @@ clear
 # proving only target_info contributed. If build_info were also used, there would be
 # a conflict on the env label and the query would fail.
 load 5m
-    metric{instance="a", job="1"} 1
-    target_info{instance="a", job="1", env="prod"} 1
-    build_info{instance="a", job="1", env="staging"} 1
+  metric{instance="a", job="1"} 1
+  target_info{instance="a", job="1", env="prod"} 1
+  build_info{instance="a", job="1", env="staging"} 1
 
 eval range from 0m to 0m step 5m info(metric, {env=~".+"})
-    metric{instance="a", job="1", env="prod"} 1
+  metric{instance="a", job="1", env="prod"} 1
