@@ -17,7 +17,7 @@ type Silence struct {
 	EndsAt    time.Time       `json:"endsAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
 	CreatedBy string          `json:"createdBy"`
-	Comment   string          `json:"comment,omitempty"`
+	Comment   string          `json:"comment"`
 	Status    SilenceStatus   `json:"status"`
 }
 
