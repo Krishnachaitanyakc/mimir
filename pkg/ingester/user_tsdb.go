@@ -608,7 +608,17 @@ func (u *userTSDB) triggerRecomputeOwnedSeries(reason string) {
 //
 // This method and updateTokenRanges should be only called from the same goroutine. (ownedSeries service)
 func (u *userTSDB) recomputeOwnedSeries(shardSize int, reason string, logger log.Logger) (success bool) {
-	success, _ = u.recomputeOwnedSeriesWithComputeFn(shardSize, reason, logger, u.computeOwnedSeries)
+	var notOwnedRefs []storage.SeriesRef
+	success, _ = u.recomputeOwnedSeriesWithComputeFn(shardSize, reason, logger, func() int {
+		var count int
+		count, notOwnedRefs = u.computeOwnedSeriesAndCollectNotOwned()
+		return count
+	})
+	if success && len(notOwnedRefs) > 0 {
+		if err := u.compactNotOwnedSeries(notOwnedRefs); err != nil {
+			level.Warn(logger).Log("msg", "failed to compact not-owned series out of TSDB head", "user", u.userID, "err", err)
+		}
+	}
 	return success
 }
 
@@ -686,13 +696,22 @@ func (u *userTSDB) updateTokenRanges(newTokenRanges []uint32) bool {
 }
 
 func (u *userTSDB) computeOwnedSeries() int {
+	count, _ := u.computeOwnedSeriesAndCollectNotOwned()
+	return count
+}
+
+// computeOwnedSeriesAndCollectNotOwned iterates every series in the Head,
+// counts those owned by this ingester, removes non-owned ones from ActiveSeries,
+// and returns their refs so the caller can compact them out of the Head.
+func (u *userTSDB) computeOwnedSeriesAndCollectNotOwned() (int, []storage.SeriesRef) {
 	// This can happen if ingester doesn't own this tenant anymore.
 	if len(u.ownedTokenRanges) == 0 {
 		u.activeSeries.Clear()
-		return 0
+		return 0, nil
 	}
 
 	count := 0
+	var notOwnedRefs []storage.SeriesRef
 	idx := u.Head().MustIndex()
 	defer idx.Close()
 
@@ -702,10 +721,34 @@ func (u *userTSDB) computeOwnedSeries() int {
 				count++
 			} else {
 				u.activeSeries.Delete(refs[i], idx)
+				notOwnedRefs = append(notOwnedRefs, storage.SeriesRef(refs[i]))
 			}
 		}
 	})
-	return count
+	return count, notOwnedRefs
+}
+
+// compactNotOwnedSeries writes the series identified by notOwnedRefs to on-disk
+// blocks and removes them from the Head. refs must not be empty.
+//
+// This must not be called concurrently with compactHead: both use the same
+// active→forceCompacting→active state transition, so a concurrent call would
+// fail because the state is already forceCompacting.
+func (u *userTSDB) compactNotOwnedSeries(notOwnedRefs []storage.SeriesRef) error {
+	if len(notOwnedRefs) == 0 {
+		return nil
+	}
+
+	// Prevent new appends that overlap with the compaction from racing with the
+	// block write, the same way compactHead does.
+	if ok, s := u.changeStateToForcedCompaction(active, math.MaxInt64); !ok {
+		return fmt.Errorf("TSDB head cannot be compacted because it is not in active state (possibly being closed or blocks shipping in progress): %s", s.String())
+	}
+	defer u.changeState(forceCompacting, active)
+
+	u.inFlightAppendsStartedBeforeForcedCompaction.Wait()
+
+	return u.db.CompactHeadByCustomRefs(notOwnedRefs)
 }
 
 func (u *userTSDB) setLastEarlyCompaction(t time.Time) {

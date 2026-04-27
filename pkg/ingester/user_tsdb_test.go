@@ -9,12 +9,18 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/ring"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/value"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/mimir/pkg/ingester/activeseries"
+	asmodel "github.com/grafana/mimir/pkg/ingester/activeseries/model"
+	"github.com/grafana/mimir/pkg/mimirpb"
 	"github.com/grafana/mimir/pkg/util/validation"
 )
 
@@ -196,6 +202,157 @@ func TestNextForcedHeadCompactionRange(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestComputeOwnedSeriesAndCollectNotOwned(t *testing.T) {
+	const userID = "test"
+
+	opts := tsdb.DefaultOptions()
+	opts.IsolationDisabled = true
+	opts.SecondaryHashFunction = secondaryTSDBHashFunctionForUser(userID)
+
+	db, err := tsdb.Open(t.TempDir(), promslog.NewNopLogger(), nil, opts, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	series1 := labels.FromStrings("__name__", "foo", "n", "1")
+	series2 := labels.FromStrings("__name__", "foo", "n", "2")
+
+	app := db.Appender(context.Background())
+	_, err = app.Append(0, series1, 1, 1.0)
+	require.NoError(t, err)
+	_, err = app.Append(0, series2, 1, 1.0)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	hash1 := mimirpb.ShardByAllLabels(userID, series1)
+	hash2 := mimirpb.ShardByAllLabels(userID, series2)
+
+	udb := &userTSDB{
+		db:           db,
+		activeSeries: activeseries.NewActiveSeries(&asmodel.Matchers{}, time.Minute, nil),
+	}
+
+	t.Run("all owned", func(t *testing.T) {
+		udb.ownedTokenRanges = ring.TokenRanges{0, math.MaxUint32}
+		count, notOwned := udb.computeOwnedSeriesAndCollectNotOwned()
+		require.Equal(t, 2, count)
+		require.Empty(t, notOwned)
+	})
+
+	t.Run("none owned — empty token ranges", func(t *testing.T) {
+		udb.ownedTokenRanges = ring.TokenRanges{}
+		count, notOwned := udb.computeOwnedSeriesAndCollectNotOwned()
+		require.Equal(t, 0, count)
+		require.Empty(t, notOwned) // empty ranges → activeSeries.Clear(), returns early
+	})
+
+	t.Run("own only series1", func(t *testing.T) {
+		udb.ownedTokenRanges = ring.TokenRanges{hash1, hash1}
+		count, notOwned := udb.computeOwnedSeriesAndCollectNotOwned()
+		require.Equal(t, 1, count)
+		require.Len(t, notOwned, 1)
+		// The not-owned ref must correspond to series2.
+		idx := udb.Head().MustIndex()
+		defer idx.Close()
+		buf := labels.NewScratchBuilder(4)
+		require.NoError(t, idx.Series(notOwned[0], &buf, nil))
+		require.Equal(t, series2, buf.Labels())
+	})
+
+	t.Run("own only series2", func(t *testing.T) {
+		udb.ownedTokenRanges = ring.TokenRanges{hash2, hash2}
+		count, notOwned := udb.computeOwnedSeriesAndCollectNotOwned()
+		require.Equal(t, 1, count)
+		require.Len(t, notOwned, 1)
+		idx := udb.Head().MustIndex()
+		defer idx.Close()
+		buf := labels.NewScratchBuilder(4)
+		require.NoError(t, idx.Series(notOwned[0], &buf, nil))
+		require.Equal(t, series1, buf.Labels())
+	})
+}
+
+func TestCompactNotOwnedSeries(t *testing.T) {
+	const userID = "test"
+
+	series1 := labels.FromStrings("__name__", "foo", "n", "1")
+	series2 := labels.FromStrings("__name__", "foo", "n", "2")
+	hash1 := mimirpb.ShardByAllLabels(userID, series1)
+	staleVal := math.Float64frombits(value.StaleNaN)
+
+	opts := tsdb.DefaultOptions()
+	opts.IsolationDisabled = true
+	opts.SecondaryHashFunction = secondaryTSDBHashFunctionForUser(userID)
+
+	newUDB := func(t *testing.T) *userTSDB {
+		db, err := tsdb.Open(t.TempDir(), promslog.NewNopLogger(), nil, opts, nil)
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, db.Close()) })
+		return &userTSDB{
+			db:           db,
+			activeSeries: activeseries.NewActiveSeries(&asmodel.Matchers{}, time.Minute, nil),
+		}
+	}
+
+	t.Run("empty refs is a no-op", func(t *testing.T) {
+		udb := newUDB(t)
+
+		app := udb.db.Appender(context.Background())
+		_, err := app.Append(0, series1, 1000, 1.0)
+		require.NoError(t, err)
+		_, err = app.Append(0, series2, 2000, 1.0)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+
+		require.NoError(t, udb.compactNotOwnedSeries(nil))
+		require.Equal(t, uint64(2), udb.db.Head().NumSeries())
+		require.Empty(t, udb.db.Blocks())
+	})
+
+	t.Run("not-owned series are written to a block and removed from the head", func(t *testing.T) {
+		udb := newUDB(t)
+
+		// series1 receives a regular sample. series2 receives a regular sample
+		// followed by a stale marker; the stale marker is what allows gcStaleSeries
+		// to evict the series from the Head after compaction.
+		app := udb.db.Appender(context.Background())
+		_, err := app.Append(0, series1, 1000, 1.0)
+		require.NoError(t, err)
+		_, err = app.Append(0, series2, 2000, 1.0)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+
+		app = udb.db.Appender(context.Background())
+		_, err = app.Append(0, series2, 3000, staleVal)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+
+		require.Equal(t, uint64(2), udb.db.Head().NumSeries())
+		require.Empty(t, udb.db.Blocks())
+
+		// Own only series1; series2 is not-owned.
+		udb.ownedTokenRanges = ring.TokenRanges{hash1, hash1}
+		_, notOwned := udb.computeOwnedSeriesAndCollectNotOwned()
+		require.Len(t, notOwned, 1)
+
+		require.NoError(t, udb.compactNotOwnedSeries(notOwned))
+
+		// series2 must have been written to a block and evicted from the Head.
+		require.Len(t, udb.db.Blocks(), 1)
+		require.Equal(t, uint64(1), udb.db.Head().NumSeries())
+	})
+
+	t.Run("returns error when TSDB is not in active state", func(t *testing.T) {
+		udb := newUDB(t)
+
+		ok, _ := udb.changeStateToForcedCompaction(active, math.MaxInt64)
+		require.True(t, ok)
+		defer udb.changeState(forceCompacting, active)
+
+		err := udb.compactNotOwnedSeries([]storage.SeriesRef{1})
+		require.Error(t, err)
+	})
 }
 
 func TestGetSeriesCountAndMinLocalLimit(t *testing.T) {
