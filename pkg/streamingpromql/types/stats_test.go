@@ -1303,4 +1303,7 @@ func TestOperatorEvaluationStats_FinalizeAndComputePrometheusStats(t *testing.T)
 		StartTimestamp:      timestamp.FromTime(startT),
 	}
 	require.Equal(t, expected, actual)
+
+	stats.Close()
+	require.Zero(t, memoryConsumptionTracker.CurrentEstimatedMemoryConsumptionBytes())
 }
