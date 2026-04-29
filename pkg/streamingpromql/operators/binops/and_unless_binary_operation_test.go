@@ -168,6 +168,26 @@ func TestAndUnlessBinaryOperation_PassesWithoutDerivedMatchersToRHS(t *testing.T
 				labels.FromStrings("env", "prod", "foo", "baz", "region", "eu-west"),
 			},
 		},
+		"and op with without(foo) matching: RHS matchers ignore labels missing from some LHS series": {
+			isUnless:       false,
+			vectorMatching: parser.VectorMatching{On: false, MatchingLabels: []string{"foo"}},
+			leftSeries: []labels.Labels{
+				labels.FromStrings("env", "prod", "foo", "bar", "region", "us-east"),
+				labels.FromStrings("env", "prod", "foo", "baz"),
+			},
+			rightSeries: []labels.Labels{
+				// Matches LHS group {env="prod"} and must not be filtered out by a region matcher.
+				labels.FromStrings("env", "prod", "foo", "x"),
+				// Filtered out by derived env matcher (env="staging" not in LHS).
+				labels.FromStrings("env", "staging", "foo", "y"),
+			},
+			expectedRHSMatchers: types.Matchers{
+				{Type: labels.MatchRegexp, Name: "env", Value: "prod"},
+			},
+			expectedOutputSeries: []labels.Labels{
+				labels.FromStrings("env", "prod", "foo", "baz"),
+			},
+		},
 		"unless op with without(foo) matching: RHS receives matchers for non-excluded labels": {
 			isUnless:       true,
 			vectorMatching: parser.VectorMatching{On: false, MatchingLabels: []string{"foo"}},
