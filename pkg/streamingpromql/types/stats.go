@@ -247,7 +247,7 @@ func (s *OperatorEvaluationStats) ExtendStepInvariantToFullRange(timeRange Query
 	expanded.allSeries.SetFromStepInvariant(s.allSeries.samplesProcessedPerStep[0], s.allSeries.samplesReadIfSubsequentStep[0], s.allSeries.samplesReadIfFirstStep[0])
 
 	for i, subset := range s.subsets {
-		expanded.subsets[i].SetFromStepInvariant(subset.samplesProcessedPerStep[0], subset.samplesReadIfSubsequentStep[0], subset.samplesReadIfFirstStep[i])
+		expanded.subsets[i].SetFromStepInvariant(subset.samplesProcessedPerStep[0], subset.samplesReadIfSubsequentStep[0], subset.samplesReadIfFirstStep[0])
 	}
 
 	return expanded, nil

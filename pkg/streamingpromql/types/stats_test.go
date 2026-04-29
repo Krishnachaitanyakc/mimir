@@ -1135,15 +1135,15 @@ func TestOperatorEvaluationStats_EncodingAndDecoding(t *testing.T) {
 			stats.subsets[0].samplesReadIfFirstStep[1] = 601
 			stats.subsets[0].samplesReadIfFirstStep[2] = 602
 
-			stats.subsets[1].samplesProcessedPerStep[0] = 700
-			stats.subsets[1].samplesProcessedPerStep[1] = 701
-			stats.subsets[1].samplesProcessedPerStep[2] = 702
-			stats.subsets[1].samplesReadIfSubsequentStep[0] = 800
-			stats.subsets[1].samplesReadIfSubsequentStep[1] = 801
-			stats.subsets[1].samplesReadIfSubsequentStep[2] = 802
-			stats.subsets[1].samplesReadIfSubsequentStep[0] = 900
-			stats.subsets[1].samplesReadIfSubsequentStep[1] = 901
-			stats.subsets[1].samplesReadIfSubsequentStep[2] = 902
+		stats.subsets[1].samplesProcessedPerStep[0] = 700
+		stats.subsets[1].samplesProcessedPerStep[1] = 701
+		stats.subsets[1].samplesProcessedPerStep[2] = 702
+		stats.subsets[1].samplesReadIfSubsequentStep[0] = 800
+		stats.subsets[1].samplesReadIfSubsequentStep[1] = 801
+		stats.subsets[1].samplesReadIfSubsequentStep[2] = 802
+		stats.subsets[1].samplesReadIfFirstStep[0] = 900
+		stats.subsets[1].samplesReadIfFirstStep[1] = 901
+		stats.subsets[1].samplesReadIfFirstStep[2] = 902
 
 			return stats
 		},
