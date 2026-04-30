@@ -1112,3 +1112,45 @@ func TestOperatorEvaluationStats_DecodingInvalidValues(t *testing.T) {
 		})
 	}
 }
+
+func TestOperatorEvaluationStats_HalveCounts(t *testing.T) {
+	ctx := context.Background()
+	memoryConsumptionTracker := limiter.NewUnlimitedMemoryConsumptionTracker(ctx)
+
+	start := timestamp.Time(0)
+	step := time.Minute
+	end := start.Add(step)
+	timeRange := NewRangeQueryTimeRange(start, end, step)
+
+	s, err := NewOperatorEvaluationStats(timeRange, memoryConsumptionTracker, 2)
+	require.NoError(t, err)
+
+	s.allSeries.samplesProcessedPerStep[0] = 100
+	s.allSeries.samplesProcessedPerStep[1] = 200
+	s.allSeries.newSamplesReadPerStep[0] = 10
+	s.allSeries.newSamplesReadPerStep[1] = 20
+
+	s.subsets[0].samplesProcessedPerStep[0] = 60
+	s.subsets[0].samplesProcessedPerStep[1] = 80
+	s.subsets[0].newSamplesReadPerStep[0] = 6
+	s.subsets[0].newSamplesReadPerStep[1] = 8
+
+	s.subsets[1].samplesProcessedPerStep[0] = 40
+	s.subsets[1].samplesProcessedPerStep[1] = 120
+	s.subsets[1].newSamplesReadPerStep[0] = 4
+	s.subsets[1].newSamplesReadPerStep[1] = 12
+
+	s.HalveCounts()
+
+	require.Equal(t, []int64{50, 100}, s.allSeries.samplesProcessedPerStep)
+	require.Equal(t, []int64{5, 10}, s.allSeries.newSamplesReadPerStep)
+
+	require.Equal(t, []int64{30, 40}, s.subsets[0].samplesProcessedPerStep)
+	require.Equal(t, []int64{3, 4}, s.subsets[0].newSamplesReadPerStep)
+
+	require.Equal(t, []int64{20, 60}, s.subsets[1].samplesProcessedPerStep)
+	require.Equal(t, []int64{2, 6}, s.subsets[1].newSamplesReadPerStep)
+
+	s.Close()
+	require.Zero(t, memoryConsumptionTracker.CurrentEstimatedMemoryConsumptionBytes())
+}

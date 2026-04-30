@@ -304,6 +304,18 @@ func (s *OperatorEvaluationStats) HasSubsets() bool {
 	return len(s.subsets) > 0
 }
 
+// HalveCounts divides all sample counters in this instance by 2, rounding down.
+//
+// This is used to correct for double-counting when both the sum and count legs
+// of a sharded avg() expression process the same underlying data.
+func (s *OperatorEvaluationStats) HalveCounts() {
+	s.allSeries.HalveCounts()
+
+	for _, subset := range s.subsets {
+		subset.HalveCounts()
+	}
+}
+
 // GetSamplesProcessed returns the total count and per-step count of samples processed.
 //
 // The slice returned is returned to a pool when Close is called.
@@ -432,6 +444,16 @@ func (s *subsetStats) SetFromStepInvariant(samplesProcessed int64, newSamplesRea
 func (s *subsetStats) CopyFrom(source *subsetStats) {
 	copy(s.samplesProcessedPerStep, source.samplesProcessedPerStep)
 	copy(s.newSamplesReadPerStep, source.newSamplesReadPerStep)
+}
+
+func (s *subsetStats) HalveCounts() {
+	for i := range s.samplesProcessedPerStep {
+		s.samplesProcessedPerStep[i] /= 2
+	}
+
+	for i := range s.newSamplesReadPerStep {
+		s.newSamplesReadPerStep[i] /= 2
+	}
 }
 
 func (s *subsetStats) Encode() EncodedSubsetStats {
