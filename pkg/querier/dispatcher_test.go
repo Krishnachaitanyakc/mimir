@@ -178,14 +178,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   6,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   6,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{2, 2, 2},
+								SamplesReadIfSubsequentStep: []int64{2, 2, 2},
+								SamplesReadIfFirstStep:      []int64{2, 2, 2},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -224,14 +235,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -270,14 +292,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -319,14 +352,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -411,14 +455,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						{TimestampMs: 20_000, Value: 5},
 					},
 				}),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   6,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   10,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{2, 4, 4},
+								SamplesReadIfSubsequentStep: []int64{2, 2, 2},
+								SamplesReadIfFirstStep:      []int64{2, 4, 4},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -433,13 +488,24 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 					mimirpb.Sample{TimestampMs: 10_000, Value: 10.123},
 					mimirpb.Sample{TimestampMs: 20_000, Value: 20.123},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						2: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0, 0, 0},
+								SamplesReadIfSubsequentStep: []int64{0, 0, 0},
+								SamplesReadIfFirstStep:      []int64{0, 0, 0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode: "OK",
 		},
@@ -448,13 +514,24 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 			req: createQueryRequest(`"the string"`, types.NewInstantQueryTimeRange(startT)),
 			expectedResponseMessages: []*frontendv2pb.QueryResultStreamRequest{
 				newStringMessage(0, "the string"),
-				newEvaluationCompletedMessage(stats.Stats{
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						0: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0},
+								SamplesReadIfSubsequentStep: []int64{0},
+								SamplesReadIfFirstStep:      []int64{0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode: "OK",
 		},
@@ -482,6 +559,15 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						FetchedSeriesCount: 123,
 						FetchedChunksCount: 456,
 						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						6: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3},
+								SamplesReadIfSubsequentStep: []int64{3},
+								SamplesReadIfFirstStep:      []int64{3},
+							},
+						},
 					},
 					[]string{`PromQL info: metric might not be a counter, name does not end in _total/_sum/_count/_bucket: "my_series" (1:20)`},
 					[]string{`PromQL warning: quantile value should be between 0 and 1, got 2 (1:67)`},
@@ -555,14 +641,32 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						0: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{2, 2, 2},
+								SamplesReadIfSubsequentStep: []int64{2, 2, 2},
+								SamplesReadIfFirstStep:      []int64{2, 2, 2},
+							},
+						},
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{1, 1, 1},
+								SamplesReadIfSubsequentStep: []int64{1, 1, 1},
+								SamplesReadIfFirstStep:      []int64{1, 1, 1},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -645,14 +749,32 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   18,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+						2: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -774,14 +896,32 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						{TimestampMs: 20_000, Value: 5},
 					},
 				}),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   15,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{2, 4, 4},
+								SamplesReadIfSubsequentStep: []int64{2, 2, 2},
+								SamplesReadIfFirstStep:      []int64{2, 4, 4},
+							},
+						},
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{1, 2, 2},
+								SamplesReadIfSubsequentStep: []int64{1, 1, 1},
+								SamplesReadIfFirstStep:      []int64{1, 2, 2},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -808,13 +948,31 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 					mimirpb.Sample{TimestampMs: 10_000, Value: 20},
 					mimirpb.Sample{TimestampMs: 20_000, Value: 20},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						0: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0, 0, 0},
+								SamplesReadIfSubsequentStep: []int64{0, 0, 0},
+								SamplesReadIfFirstStep:      []int64{0, 0, 0},
+							},
+						},
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0, 0, 0},
+								SamplesReadIfSubsequentStep: []int64{0, 0, 0},
+								SamplesReadIfFirstStep:      []int64{0, 0, 0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode: "OK",
 		},
@@ -897,14 +1055,39 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   11,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						0: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0, 0, 0},
+								SamplesReadIfSubsequentStep: []int64{0, 0, 0},
+								SamplesReadIfFirstStep:      []int64{0, 0, 0},
+							},
+						},
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{2, 2, 2},
+								SamplesReadIfSubsequentStep: []int64{2, 2, 2},
+								SamplesReadIfFirstStep:      []int64{2, 2, 2},
+							},
+						},
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{1, 2, 2},
+								SamplesReadIfSubsequentStep: []int64{1, 1, 1},
+								SamplesReadIfFirstStep:      []int64{1, 2, 2},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -943,14 +1126,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -989,14 +1183,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1038,14 +1243,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1090,14 +1306,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   9,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   9,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{3, 3, 3},
+								SamplesReadIfSubsequentStep: []int64{3, 3, 3},
+								SamplesReadIfFirstStep:      []int64{3, 3, 3},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1107,14 +1334,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 			req: createQueryRequest(`my_non_existent_series + 0.123`, types.NewRangeQueryTimeRange(startT, startT.Add(20*time.Second), 10*time.Second)),
 			expectedResponseMessages: []*frontendv2pb.QueryResultStreamRequest{
 				newBatchedSeriesMetadataMessage(3, 0),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   0,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   0,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0, 0, 0},
+								SamplesReadIfSubsequentStep: []int64{0, 0, 0},
+								SamplesReadIfFirstStep:      []int64{0, 0, 0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1124,14 +1362,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 			req: createQueryRequestWithBatchSize(`my_non_existent_series + 0.123`, types.NewRangeQueryTimeRange(startT, startT.Add(20*time.Second), 10*time.Second), 3),
 			expectedResponseMessages: []*frontendv2pb.QueryResultStreamRequest{
 				newBatchedSeriesMetadataMessage(3, 0),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   0,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   0,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0, 0, 0},
+								SamplesReadIfSubsequentStep: []int64{0, 0, 0},
+								SamplesReadIfFirstStep:      []int64{0, 0, 0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1141,14 +1390,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 			req: createQueryRequest(`my_non_existent_series[2h]`, types.NewInstantQueryTimeRange(startT)),
 			expectedResponseMessages: []*frontendv2pb.QueryResultStreamRequest{
 				newBatchedSeriesMetadataMessage(0, 0),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   0,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   0,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						0: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0},
+								SamplesReadIfSubsequentStep: []int64{0},
+								SamplesReadIfFirstStep:      []int64{0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1158,14 +1418,25 @@ func TestDispatcher_HandleProtobuf(t *testing.T) {
 			req: createQueryRequestWithBatchSize(`my_non_existent_series[2h]`, types.NewInstantQueryTimeRange(startT), 3),
 			expectedResponseMessages: []*frontendv2pb.QueryResultStreamRequest{
 				newBatchedSeriesMetadataMessage(0, 0),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed:   0,
-					QueueTime:          3 * time.Second,
-					WallTime:           expectedQueryWallTime,
-					FetchedSeriesCount: 123,
-					FetchedChunksCount: 456,
-					FetchedChunkBytes:  789,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed:   0,
+						QueueTime:          3 * time.Second,
+						WallTime:           expectedQueryWallTime,
+						FetchedSeriesCount: 123,
+						FetchedChunksCount: 456,
+						FetchedChunkBytes:  789,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						0: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{0},
+								SamplesReadIfSubsequentStep: []int64{0},
+								SamplesReadIfFirstStep:      []int64{0},
+							},
+						},
+					},
+				),
 			},
 			expectedStatusCode:                           "OK",
 			expectStorageToBeCalledWithPropagatedHeaders: true,
@@ -1430,10 +1701,21 @@ func TestDispatcher_HandleProtobuf_WithDelayedNameRemovalEnabled(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed: 5,
-					WallTime:         expectedQueryWallTime,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed: 5,
+						WallTime:         expectedQueryWallTime,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						1: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{5},
+								SamplesReadIfSubsequentStep: []int64{5},
+								SamplesReadIfFirstStep:      []int64{5},
+							},
+						},
+					},
+				),
 			},
 		},
 		"root of query": {
@@ -1458,10 +1740,21 @@ func TestDispatcher_HandleProtobuf_WithDelayedNameRemovalEnabled(t *testing.T) {
 						},
 					},
 				),
-				newEvaluationCompletedMessage(stats.Stats{
-					SamplesProcessed: 5,
-					WallTime:         expectedQueryWallTime,
-				}),
+				newEvaluationCompletedMessage(
+					stats.Stats{
+						SamplesProcessed: 5,
+						WallTime:         expectedQueryWallTime,
+					},
+					map[int64]types.EncodedOperatorEvaluationStats{
+						3: {
+							AllSeries: types.EncodedSubsetStats{
+								SamplesProcessedPerStep:     []int64{5},
+								SamplesReadIfSubsequentStep: []int64{5},
+								SamplesReadIfFirstStep:      []int64{5},
+							},
+						},
+					},
+				),
 			},
 		},
 	}
@@ -1711,17 +2004,18 @@ func newBatchedSeriesMetadataMessage(nodeIndex int64, totalSeriesCount int64, se
 	}
 }
 
-func newEvaluationCompletedMessage(stats stats.Stats) *frontendv2pb.QueryResultStreamRequest {
-	return newEvaluationCompletedMessageWithAnnotations(stats, nil, nil)
+func newEvaluationCompletedMessage(stats stats.Stats, perNodeStats map[int64]types.EncodedOperatorEvaluationStats) *frontendv2pb.QueryResultStreamRequest {
+	return newEvaluationCompletedMessageWithAnnotations(stats, perNodeStats, nil, nil)
 }
 
-func newEvaluationCompletedMessageWithAnnotations(stats stats.Stats, infos []string, warnings []string) *frontendv2pb.QueryResultStreamRequest {
+func newEvaluationCompletedMessageWithAnnotations(stats stats.Stats, perNodeStats map[int64]types.EncodedOperatorEvaluationStats, infos []string, warnings []string) *frontendv2pb.QueryResultStreamRequest {
 	return &frontendv2pb.QueryResultStreamRequest{
 		Data: &frontendv2pb.QueryResultStreamRequest_EvaluateQueryResponse{
 			EvaluateQueryResponse: &querierpb.EvaluateQueryResponse{
 				Message: &querierpb.EvaluateQueryResponse_EvaluationCompleted{
 					EvaluationCompleted: &querierpb.EvaluateQueryResponseEvaluationCompleted{
-						Stats: stats,
+						Stats:        stats,
+						PerNodeStats: perNodeStats,
 						Annotations: querierpb.Annotations{
 							Infos:    infos,
 							Warnings: warnings,
