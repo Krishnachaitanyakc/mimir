@@ -255,7 +255,7 @@ func (c *KafkaProducer) ProduceSync(ctx context.Context, records []*kgo.Record) 
 		c.produceRecordsFailedTotal.WithLabelValues("cancelled-before-producing").Add(recordsCount)
 
 		// We wrap the error to make it cristal clear where the context canceled/timeout comes from.
-		return kgo.ProduceResults{{Err: errors.Wrap(context.Cause(ctx), "skipped producing Kafka records because context is already done")}}
+		return produceResultsForErr(records, errors.Wrap(context.Cause(ctx), "skipped producing Kafka records because context is already done"))
 	}
 
 	onProduceDone := func(r *kgo.Record, err error) {
@@ -311,11 +311,22 @@ func (c *KafkaProducer) ProduceSync(ctx context.Context, records []*kgo.Record) 
 	select {
 	case <-ctx.Done():
 		// We wrap the error to make it cristal clear where the context canceled/timeout comes from.
-		return kgo.ProduceResults{{Err: errors.Wrap(context.Cause(ctx), "waiting for Kafka records to be produced and acknowledged")}}
+		return produceResultsForErr(records, errors.Wrap(context.Cause(ctx), "waiting for Kafka records to be produced and acknowledged"))
 	case <-done:
 		// Once we're done, it's guaranteed that no more results will be appended, so we can safely return it.
 		return res
 	}
+}
+
+// produceResultsForErr returns a kgo.ProduceResults with one entry per input record,
+// each with its Record set and the given error. This matches the behaviour of
+// kgo.Client.ProduceSync, which always returns one result per input record.
+func produceResultsForErr(records []*kgo.Record, err error) kgo.ProduceResults {
+	results := make(kgo.ProduceResults, 0, len(records))
+	for _, record := range records {
+		results = append(results, kgo.ProduceResult{Record: record, Err: err})
+	}
+	return results
 }
 
 func produceErrReason(err error) string {
