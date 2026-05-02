@@ -124,17 +124,31 @@ type IndexCache interface {
 
 // NewIndexCache creates a new index cache based on the input configuration.
 func NewIndexCache(cfg IndexCacheConfig, logger log.Logger, registerer prometheus.Registerer) (IndexCache, error) {
+	_, indexCache, err := NewIndexCacheWithClient(cfg, logger, registerer)
+	return indexCache, err
+}
+
+// NewIndexCacheWithClient creates a new index cache based on the input configuration and returns the underlying cache client, if any.
+func NewIndexCacheWithClient(cfg IndexCacheConfig, logger log.Logger, registerer prometheus.Registerer) (cache.Cache, IndexCache, error) {
 	switch cfg.Backend {
 	case BackendInMemory:
-		return NewInMemoryIndexCacheWithConfig(cfg.InMemory, registerer, logger)
+		indexCache, err := NewInMemoryIndexCacheWithConfig(cfg.InMemory, registerer, logger)
+		if err != nil {
+			return nil, nil, err
+		}
+		return nil, indexCache, nil
 	case BackendMemcached:
 		client, err := cache.NewMemcachedClientWithConfig(logger, "index-cache", cfg.Memcached, prometheus.WrapRegistererWithPrefix("thanos_", registerer))
 		if err != nil {
-			return nil, errors.Wrap(err, "create index cache memcached client")
+			return nil, nil, errors.Wrap(err, "create index cache memcached client")
 		}
-		return NewMemcachedIndexCache(client, logger, registerer)
+		indexCache, err := NewMemcachedIndexCache(client, logger, registerer)
+		if err != nil {
+			return nil, nil, err
+		}
+		return client, indexCache, nil
 	default:
-		return nil, ErrUnsupportedIndexCacheBackend
+		return nil, nil, ErrUnsupportedIndexCacheBackend
 	}
 }
 

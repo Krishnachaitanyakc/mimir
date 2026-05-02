@@ -208,28 +208,15 @@ func NewBucketStores(cfg tsdb.BlocksStorageConfig, shardingStrategy ShardingStra
 func initIndexCache(
 	cfg tsdb.BlocksStorageConfig, logger log.Logger, reg prometheus.Registerer,
 ) (indexCacheClient cache.Cache, indexCache indexcache.IndexCache, err error) {
-	switch cfg.BucketStore.IndexCache.Backend {
-	case indexcache.BackendInMemory:
-		indexCache, err = indexcache.NewInMemoryIndexCacheWithConfig(cfg.BucketStore.IndexCache.InMemory, reg, logger)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "create index cache")
-		}
-		// The in-memory index cache implementation does not provide a compatible cache.Cache backend.
-		return nil, indexCache, nil
-	case indexcache.BackendMemcached:
-		indexMemcachedClient, err := cache.NewMemcachedClientWithConfig(logger, "index-cache", cfg.BucketStore.IndexCache.Memcached, prometheus.WrapRegistererWithPrefix("thanos_", reg))
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "create index cache memcached client")
-		}
-		indexCache, err = indexcache.NewMemcachedIndexCache(indexMemcachedClient, logger, reg)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "create index cache")
-		}
-		// If the index cache uses a memcached backend, the same client can be used for the index-header bucket cache.
-		return indexMemcachedClient, indexCache, nil
-	default:
+	indexCacheClient, indexCache, err = indexcache.NewIndexCacheWithClient(cfg.BucketStore.IndexCache, logger, reg)
+	if errors.Is(err, indexcache.ErrUnsupportedIndexCacheBackend) {
 		return nil, nil, errors.Wrap(indexcache.ErrUnsupportedIndexCacheBackend, "create index cache")
 	}
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "create index cache")
+	}
+
+	return indexCacheClient, indexCache, nil
 }
 
 func initCachingBuckets(
