@@ -122,6 +122,9 @@ func NewBucketStores(cfg tsdb.BlocksStorageConfig, shardingStrategy ShardingStra
 	cachingBucket, err := tsdb.NewCachingBucket(
 		metadataCache, cfg, indexCacheClient, chunksCacheClient, bucketClient, logger, reg, cachingBktMetrics,
 	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "create caching bucket")
+	}
 
 	gateReg := prometheus.WrapRegistererWithPrefix("cortex_bucket_stores_", reg)
 
