@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/mimir/pkg/ingester/activeseries"
 	"github.com/grafana/mimir/pkg/storage/bucket"
+	"github.com/grafana/mimir/pkg/storage/tsdb/indexcache"
 )
 
 func TestConfig_Validate(t *testing.T) {
@@ -120,6 +121,13 @@ func TestConfig_Validate(t *testing.T) {
 				cfg.BucketStore.StreamingBatchSize = 0
 			},
 			expectedErr: errInvalidStreamingBatchSize,
+		},
+		"should fail when index-header cache is enabled with in-memory index cache": {
+			setup: func(cfg *BlocksStorageConfig, _ *activeseries.Config) {
+				cfg.BucketStore.IndexHeaderCache.Enabled = true
+				cfg.BucketStore.IndexCache.Backend = indexcache.BackendInMemory
+			},
+			expectedErr: errIndexHeaderCacheRequiresSharedIndexCache,
 		},
 		"should fail if forced compaction is enabled but active series tracker is not": {
 			setup: func(cfg *BlocksStorageConfig, activeSeriesCfg *activeseries.Config) {

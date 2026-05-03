@@ -112,6 +112,7 @@ var (
 	errInvalidEarlyHeadCompactionMinSeriesReduction = errors.New("early compaction minimum series reduction percentage must be a value between 0 and 100 (included)")
 	errEarlyCompactionRequiresActiveSeries          = fmt.Errorf("early compaction requires -%s to be enabled", activeseries.EnabledFlag)
 	errEmptyBlockranges                             = errors.New("empty block ranges for TSDB")
+	errIndexHeaderCacheRequiresSharedIndexCache     = errors.New("index-header cache requires a non-inmemory index cache backend")
 	errInvalidIgnoreDeletionMarksDelayConfig        = fmt.Errorf("value for -%s must be less than -%s", ignoreDeletionMarksWhileQueryingDelayFlag, ignoreDeletionMarksInStoreGatewayDelayFlag)
 	errIgnoreDeletionMarksDelayTooShort             = fmt.Errorf("value for -%s must be greater than %v× -%s to ensure that newly compacted blocks are queried before old blocks are ignored", ignoreDeletionMarksWhileQueryingDelayFlag, NewBlockDiscoveryDelayMultiplier, syncIntervalFlag)
 )
@@ -516,6 +517,9 @@ func (cfg *BucketStoreConfig) Validate() error {
 	}
 	if err := cfg.IndexCache.Validate(); err != nil {
 		return errors.Wrap(err, "index-cache configuration")
+	}
+	if cfg.IndexHeaderCache.Enabled && cfg.IndexCache.Backend == indexcache.BackendInMemory {
+		return errIndexHeaderCacheRequiresSharedIndexCache
 	}
 	if err := cfg.ChunksCache.Validate(); err != nil {
 		return errors.Wrap(err, "chunks-cache configuration")
