@@ -17,6 +17,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/dskit/cache"
 	"github.com/grafana/dskit/gate"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
@@ -117,12 +118,15 @@ func NewBucketStores(cfg tsdb.BlocksStorageConfig, shardingStrategy ShardingStra
 
 	// Init index-header cache client.
 	// If index-header bucket cache is enabled and a separate backend is not provided, it uses the index-cache backend.
-	indexHeaderCacheClient, err := tsdb.NewIndexheaderCacheClient(cfg.BucketStore.IndexHeaderCache.BackendConfig, logger, reg)
-	if err != nil {
-		return nil, err
-	}
-	if indexHeaderCacheClient == nil {
-		indexHeaderCacheClient = indexCacheClient
+	var indexHeaderCacheClient cache.Cache
+	if cfg.BucketStore.IndexHeaderCache.Enabled {
+		indexHeaderCacheClient, err = tsdb.NewIndexheaderCacheClient(cfg.BucketStore.IndexHeaderCache.BackendConfig, logger, reg)
+		if err != nil {
+			return nil, err
+		}
+		if indexHeaderCacheClient == nil {
+			indexHeaderCacheClient = indexCacheClient
+		}
 	}
 
 	// Configure caching bucket to cover configured metadata, index-header, and chunks caching.

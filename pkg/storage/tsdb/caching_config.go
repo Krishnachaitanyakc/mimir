@@ -108,6 +108,9 @@ func (cfg *ChunksCacheConfig) RegisterFlagsWithPrefix(f *flag.FlagSet, prefix st
 }
 
 func (cfg *IndexHeaderCacheConfig) Validate() error {
+	if !cfg.Enabled {
+		return nil
+	}
 	return cfg.BackendConfig.Validate()
 }
 
@@ -165,7 +168,6 @@ func NewMetadataCachingBucket(
 	bkt objstore.Bucket,
 	logger log.Logger,
 	reg prometheus.Registerer,
-	metrics *bucketcache.CachingBucketMetrics,
 ) (objstore.Bucket, error) {
 	metadataCache, err := NewMetadataCacheClient(metadataCfg.BackendConfig, logger, reg)
 	if err != nil {
@@ -183,6 +185,7 @@ func NewMetadataCachingBucket(
 	// a massive cache invalidation when rolling out a new Mimir version introducing the bucket
 	// ID. This is still fine, as far as all other caching bucket implementations specify their
 	// own unique ID.
+	metrics := bucketcache.NewCachingBucketMetrics(reg)
 	return bucketcache.NewCachingBucket("", bkt, cachingBucketCfg, logger, metrics)
 }
 

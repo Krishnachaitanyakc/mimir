@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/grafana/dskit/cache"
 	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsTenantDir(t *testing.T) {
@@ -38,4 +40,15 @@ func TestIsBlockIndexFile(t *testing.T) {
 	assert.False(t, isBlockIndexFile("/test/index"))
 	assert.True(t, isBlockIndexFile(fmt.Sprintf("%s/index", blockID.String())))
 	assert.True(t, isBlockIndexFile(fmt.Sprintf("/%s/index", blockID.String())))
+}
+
+func TestIndexHeaderCacheConfigValidateSkipsBackendWhenDisabled(t *testing.T) {
+	cfg := IndexHeaderCacheConfig{
+		Enabled: false,
+		BackendConfig: cache.BackendConfig{
+			Backend: "unsupported",
+		},
+	}
+
+	require.NoError(t, cfg.Validate())
 }
