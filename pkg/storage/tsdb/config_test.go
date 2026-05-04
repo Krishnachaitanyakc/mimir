@@ -193,6 +193,20 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
+func TestConfig_ValidateIndexHeaderCache(t *testing.T) {
+	t.Parallel()
+
+	storageCfg := &BlocksStorageConfig{}
+	activeSeriesCfg := &activeseries.Config{}
+
+	flagext.DefaultValues(storageCfg)
+	flagext.DefaultValues(activeSeriesCfg)
+	storageCfg.BucketStore.IndexHeaderCache.Backend = "unsupported"
+
+	err := storageCfg.Validate(*activeSeriesCfg)
+	assert.ErrorContains(t, err, "index-header-cache configuration: unsupported cache backend: unsupported")
+}
+
 func TestConfig_DurationList(t *testing.T) {
 	t.Parallel()
 
